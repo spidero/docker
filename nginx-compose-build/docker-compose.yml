@@ -1,0 +1,14 @@
+version: '3'
+services:
+  web1:
+    build: ./web
+  web2:
+    build: ./web
+  haproxy:
+    build: ./haproxy
+    ports:
+        - 80:80
+        - 9000:9000
+    expose:
+        - 80
+        - 9000
