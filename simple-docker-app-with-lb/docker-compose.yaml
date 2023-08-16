@@ -1,0 +1,22 @@
+name: python-app
+services:
+  web:
+    build: web/.
+    restart: unless-stopped
+    deploy:
+      mode: replicated
+      replicas: 4
+  redis:
+    image: "redis:alpine"
+    restart: unless-stopped
+    depends_on:
+      - web
+  nginx:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+    ports:
+      - "4000:4000"
