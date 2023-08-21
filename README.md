@@ -1,1 +1,1 @@
-Examples of Dockerfiles
+Examples of Dockerfiles, docker compose
