@@ -1,0 +1,23 @@
+version: '3.7'
+
+services:
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    ports:
+      - 8081:80
+  db:
+    container_name: mariadb
+    build: ./mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-vol:/var/lib/mysql
+
+volumes:
+  db-vol:
