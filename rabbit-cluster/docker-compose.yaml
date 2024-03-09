@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  rabbitmq1:
+    image: rabbitmq:3.8.23-management
+    container_name: rabbitmq1
+    hostname: rabbitmq1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "uniquecookie"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "password"
+      RABBITMQ_NODENAME: "rabbit@rabbitmq1"
+    networks:
+      - rabbitmq_network
+
+  rabbitmq2:
+    image: rabbitmq:3.8.23-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    depends_on:
+      - rabbitmq1
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      JOIN_CLUSTER_HOST: rabbitmq1
+      RABBITMQ_ERLANG_COOKIE: "uniquecookie"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "password"
+      RABBITMQ_NODENAME: "rabbit@rabbitmq2"
+      RABBITMQ_CLUSTERER_PARTITION_PREFIX: "rabbit"
+    networks:
+      - rabbitmq_network
+    command: bash -c 'sleep 30;rabbitmqctl stop_app;rabbitmqctl reset;rabbitmqctl join_cluster --ram rabbit@rabbitmq1;rabbitmqctl start_app'
+
+  rabbitmq3:
+    image: rabbitmq:3.8.23-management
+    container_name: rabbitmq3
+    hostname: rabbitmq3
+    depends_on:
+      - rabbitmq1
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+    environment:
+      JOIN_CLUSTER_HOST: rabbitmq1
+      RABBITMQ_ERLANG_COOKIE: "uniquecookie"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "password"
+      RABBITMQ_NODENAME: "rabbit@rabbitmq3"
+      RABBITMQ_CLUSTERER_PARTITION_PREFIX: "rabbit"
+    networks:
+      - rabbitmq_network
+    command: bash -c 'sleep 30;rabbitmqctl stop_app;rabbitmqctl reset;rabbitmqctl join_cluster --ram rabbit@rabbitmq1;rabbitmqctl start_app'
+
+
+networks:
+  rabbitmq_network:
+    driver: bridge
+
