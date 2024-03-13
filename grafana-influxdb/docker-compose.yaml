@@ -1,4 +1,4 @@
-name: monitogig
+name: monitoring
 services:
   grafana:
     image: grafana/grafana:latest
