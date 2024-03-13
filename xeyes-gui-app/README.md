@@ -1,5 +1,5 @@
-build image:
+#### build image:
 build . -t xeyes
 
-run:
+#### run:
 docker compose up -d
