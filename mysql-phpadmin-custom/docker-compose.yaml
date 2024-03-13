@@ -18,6 +18,12 @@ services:
       - "3307:3306"
     volumes:
       - db-vol:/var/lib/mysql
+  web-app:
+    container_name: web-app
+    image: spideropl/web-app:latest
+    restart: always
+    ports:
+      - 8082:5000
 
 volumes:
   db-vol:

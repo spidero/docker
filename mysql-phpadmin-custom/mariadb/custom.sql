@@ -7,7 +7,8 @@ CREATE DATABASE IF NOT EXISTS `users` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8
 USE `users`;
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
+  `id` INT(11) NOT NULL AUTO_INCREMENT,  
+  PRIMARY KEY (`id`),
   `login` varchar(30) NOT NULL,
   `name` varchar(30) NOT NULL,
   `description` varchar(30) NOT NULL

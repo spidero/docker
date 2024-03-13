@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  xeyes:
+    image: xeyes
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=/home/${USER}/.Xauthority
+    volumes:
+      - ${XAUTHORITY}:/home/${USER}/.Xauthority
+    network_mode: host
+    command: ["xeyes"]
+
