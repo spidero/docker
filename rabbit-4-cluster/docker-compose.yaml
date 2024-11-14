@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  rabbitmq1:
+    image: rabbitmq:4-management
+    container_name: rabbitmq1
+    hostname: rabbitmq1
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'rabbitmq-cluster-cookie'
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - rabbitmq1_data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq_network
+
+  rabbitmq2:
+    image: rabbitmq:4-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'rabbitmq-cluster-cookie'
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_NODENAME: rabbit@rabbitmq2
+    ports:
+      - "15673:15672"
+      - "5673:5672"
+    volumes:
+      - rabbitmq2_data:/var/lib/rabbitmq
+      - ./join-cluster.sh:/join-cluster.sh   # Montowanie skryptu
+    networks:
+      - rabbitmq_network
+    entrypoint: ["/bin/bash", "/join-cluster.sh", "rabbit@rabbitmq1"]
+
+  rabbitmq3:
+    image: rabbitmq:4-management
+    container_name: rabbitmq3
+    hostname: rabbitmq3
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 'rabbitmq-cluster-cookie'
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_NODENAME: rabbit@rabbitmq3
+    ports:
+      - "15674:15672"
+      - "5674:5672"
+    volumes:
+      - rabbitmq3_data:/var/lib/rabbitmq
+      - ./join-cluster.sh:/join-cluster.sh   # Montowanie skryptu
+    networks:
+      - rabbitmq_network
+    entrypoint: ["/bin/bash", "/join-cluster.sh", "rabbit@rabbitmq1"]
+
+volumes:
+  rabbitmq1_data:
+    driver: local
+  rabbitmq2_data:
+    driver: local
+  rabbitmq3_data:
+    driver: local
+
+networks:
+  rabbitmq_network:
+    driver: bridge
+
