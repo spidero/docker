@@ -1,18 +1,31 @@
-name: Docker Image CI
+name: Validate Docker Compose Files
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "master" ]
 
 jobs:
-
-  build:
-
+  validate-docker-compose:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Find and validate docker-compose files
+      - name: Validate docker-compose.yml files
+        run: |
+          echo "Searching for docker-compose.yml files..."
+          files=$(find . -name "docker-compose.yml")
+          if [ -z "$files" ]; then
+            echo "No docker-compose.yml files found."
+            exit 0
+          fi
+
+          for file in $files; do
+            echo "Validating $file"
+            docker-compose -f "$file" config
+          done
