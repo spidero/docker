@@ -1,0 +1,67 @@
+networks:
+  pg-ha-net:
+    driver: bridge
+
+services:
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: etcd1
+    networks:
+      - pg-ha-net
+    command:
+      - etcd
+      - --name=etcd1
+      - --initial-advertise-peer-urls=http://etcd1:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd1:2379
+      - --initial-cluster=etcd1=http://etcd1:2380
+
+  pg-node1:
+    build: ./patroni
+    container_name: pg-node1
+    networks:
+      - pg-ha-net
+    environment:
+      PATRONI_NAME: pg-node1
+      PATRONI_RESTAPI_CONNECT_ADDRESS: pg-node1:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg-node1:5432
+    volumes:
+      - ./patroni.yml:/etc/patroni/patroni.yml:ro
+      - pgdata1:/var/lib/postgresql/data
+    depends_on:
+      - etcd1
+
+  pg-node2:
+    build: ./patroni
+    container_name: pg-node2
+    networks:
+      - pg-ha-net
+    environment:
+      PATRONI_NAME: pg-node2
+      PATRONI_RESTAPI_CONNECT_ADDRESS: pg-node2:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg-node2:5432
+    volumes:
+      - ./patroni.yml:/etc/patroni/patroni.yml:ro
+      - pgdata2:/var/lib/postgresql/data
+    depends_on:
+      - etcd1
+
+  haproxy:
+    image: haproxy:alpine
+    container_name: haproxy
+    networks:
+      - pg-ha-net
+    ports:
+      - "5432:5432"   # Zapis
+      - "5433:5433"   # Odczyt
+      - "7000:7000"   # HAProxy GUI
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - pg-node1
+      - pg-node2
+
+volumes:
+  pgdata1:
+  pgdata2:
