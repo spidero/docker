@@ -1,0 +1,12 @@
+services:
+  haproxy:
+    image: haproxy:alpine
+    container_name: haproxy
+    restart: always
+    entrypoint: ["haproxy", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+    ports:
+      - "5432:5432"   # Zapis (Master)
+      - "5433:5433"   # Odczyt (Repliki)
+      - "7000:7000"   # HAProxy Stats GUI
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
