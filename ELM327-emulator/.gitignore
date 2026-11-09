@@ -19,3 +19,7 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+
+# Claude Code working notes (kept local only)
+CLAUDE.md
+docs/STATUS.md
