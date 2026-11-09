@@ -61,8 +61,53 @@ PIDS = {
     "42": ("Control module voltage", "V", 2, lambda b: (b[0] * 256 + b[1]) / 1000, "{:.2f}", None),
     "1F": ("Engine run time", "s", 2, lambda b: b[0] * 256 + b[1], "{:.0f}", None),
     "RV": ("Battery voltage (ELM)", "V", 0, None, "{:.1f}", None),
+    # fuel system / mixture
+    "06": ("Short term fuel trim B1", "%", 1, lambda b: (b[0] - 128) * 100 / 128, "{:+.1f}", None),
+    "07": ("Long term fuel trim B1", "%", 1, lambda b: (b[0] - 128) * 100 / 128, "{:+.1f}", None),
+    "44": ("Commanded lambda", "λ", 2, lambda b: (b[0] * 256 + b[1]) * 2 / 65536, "{:.3f}", None),
+    # 4 data bytes: lambda (AB) + sensor voltage (CD); only lambda is shown
+    "24": ("O2 S1 lambda (wideband)", "λ", 4, lambda b: (b[0] * 256 + b[1]) * 2 / 65536, "{:.3f}", None),
+    # 2 data bytes: voltage (A) + short term trim (B, 0xFF = not used); only voltage is shown
+    "15": ("O2 B1S2 voltage", "V", 2, lambda b: b[0] / 200, "{:.3f}", None),
+    # ignition / load
+    "0E": ("Timing advance", "°", 1, lambda b: b[0] / 2 - 64, "{:.1f}", None),
+    "43": ("Absolute load", "%", 2, lambda b: (b[0] * 256 + b[1]) * 100 / 255, "{:.1f}", 100),
+    # electronic throttle
+    "45": ("Relative throttle position", "%", 1, lambda b: b[0] * 100 / 255, "{:.1f}", 100),
+    "47": ("Absolute throttle position B", "%", 1, lambda b: b[0] * 100 / 255, "{:.1f}", 100),
+    "4C": ("Commanded throttle actuator", "%", 1, lambda b: b[0] * 100 / 255, "{:.1f}", 100),
+    # exhaust / catalyst
+    "3C": ("Catalyst temp B1S1", "°C", 2, lambda b: (b[0] * 256 + b[1]) / 10 - 40, "{:.0f}", None),
+    "3E": ("Catalyst temp B1S2", "°C", 2, lambda b: (b[0] * 256 + b[1]) / 10 - 40, "{:.0f}", None),
+    # environment
+    "33": ("Barometric pressure", "kPa", 1, lambda b: b[0], "{:.0f}", None),
+    # derived values (computed from other PIDs, see DERIVED)
+    "FH": ("Fuel consumption (petrol)", "L/h", 0, None, "{:.2f}", None),
+    "FK": ("Fuel consumption (petrol)", "L/100km", 0, None, "{:.1f}", None),
 }
 PID_ORDER = list(PIDS.keys())
+
+# Petrol: stoichiometric air/fuel ratio and fuel density [g/L].
+AFR_PETROL = 14.7
+FUEL_DENSITY = 745.0
+MIN_SPEED_L100 = 3          # below this speed L/100km makes no sense (division by ~0)
+
+
+def _fuel_lph(v):
+    return v["10"] * 3600 / (AFR_PETROL * FUEL_DENSITY)
+
+
+def _fuel_l100(v):
+    if v["0D"] < MIN_SPEED_L100:
+        return None
+    return _fuel_lph(v) * 100 / v["0D"]
+
+
+# key: (PIDs that must be read first, function(dict pid -> value) -> value or None)
+DERIVED = {
+    "FH": (["10"], _fuel_lph),
+    "FK": (["10", "0D"], _fuel_l100),
+}
 DEFAULT_ENABLED = ["0D", "0C", "05", "04", "11", "RV"]
 INTERVALS = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
 WINDOWS = [10, 30, 60, 120, 300, 600]   # chart time windows in seconds
@@ -306,7 +351,29 @@ class Poller(threading.Thread):
         base = [self.focus] if self.focus else list(self.settings.enabled)
         if self.recorder:
             base += [p for p in PID_ORDER if p in self.recorder.pids() and p not in base]
-        return base
+        # derived values need their source PIDs read earlier in the same cycle
+        out = []
+        for pid in base:
+            for dep in DERIVED.get(pid, ((), None))[0]:
+                if dep not in out:
+                    out.append(dep)
+            if pid not in out:
+                out.append(pid)
+        # a source PID listed after its derived value must still come first
+        for pid in [p for p in out if p in DERIVED]:
+            out.remove(pid)
+            out.append(pid)
+        return out
+
+    def _derive(self, pid, cycle_start):
+        """Compute a derived value from source PIDs read in this cycle."""
+        deps, func = DERIVED[pid]
+        with self.lock:
+            src = {p: self.data.get(p, {}) for p in deps}
+        if any(d.get("err") or d.get("value") is None or d.get("t", 0) < cycle_start
+               for d in src.values()):
+            return None
+        return func({p: d["value"] for p, d in src.items()})
 
     def run(self):
         while not self._stop.is_set():
@@ -328,6 +395,11 @@ class Poller(threading.Thread):
             for pid in self.poll_list():
                 if self._stop.is_set() or self._reconnect.is_set():
                     break
+                if pid in DERIVED:
+                    value = self._derive(pid, start)
+                    if value is not None:        # e.g. L/100km while standing still
+                        self._store(pid, value)
+                    continue
                 try:
                     if pid == "RV":
                         value = self.elm.read_voltage()
@@ -763,7 +835,8 @@ def main():
         for pid in PID_ORDER:
             name, unit = PIDS[pid][:2]
             mark = "*" if pid in settings.enabled else " "
-            print(f"{mark} {pid}  {name} [{unit}]")
+            src = f"  (computed from {', '.join(DERIVED[pid][0])})" if pid in DERIVED else ""
+            print(f"{mark} {pid}  {name} [{unit}]{src}")
         print("\n* = enabled on the dashboard ('all' records these)")
         return
 
