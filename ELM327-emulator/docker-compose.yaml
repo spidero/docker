@@ -1,0 +1,9 @@
+services:
+  elm327:
+    build: .
+    container_name: elm327-emulator
+    ports:
+      - "35000:35000"
+    stdin_open: true   # emulator domyślnie ma konsolę interaktywną
+    tty: true
+    restart: unless-stopped
