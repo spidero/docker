@@ -9,7 +9,7 @@ Examples of Dockerfiles and Docker Compose setups – from a one-line "hello wor
 | Directory | Description |
 |---|---|
 | [`hello_world`](hello_world) | Smallest possible image: `busybox` printing a message |
-| [`install_packages`](install_packages) | Installing system packages during a build (Fedora + OpenSSH, sudo) |
+| [`install_packages`](install_packages) | Installing system packages during a build: Fedora 44 + OpenSSH server, sudo |
 | [`ansible`](ansible) | Alpine 3.18 image with Ansible |
 | [`xeyes-gui-app`](xeyes-gui-app) | Running an X11 GUI application (`xeyes`) from a container |
 
@@ -73,7 +73,7 @@ Several examples publish the same host ports (e.g. `5432`, `5672`, `15672`, `900
 ## Notes
 
 - The examples are meant for learning and local testing. Passwords and other credentials in the files are demo values – do not reuse them in production.
-- `.github/workflows/docker-image.yml` validates compose files with `docker-compose config`, but it runs only on pushes to `main` (this repository uses `master`) and searches only for `docker-compose.yml`, while most files here are named `docker-compose.yaml` – so currently almost nothing is validated.
+- GitHub Actions (`.github/workflows/docker-image.yml`) validates every compose file (`docker-compose.yml`/`.yaml`, `compose.yml`/`.yaml`) with `docker compose config` on each push to `master`, on pull requests and on manual run. It checks syntax and structure only – images are not built or started.
 
 ## License
 

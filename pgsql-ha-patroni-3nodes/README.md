@@ -53,6 +53,6 @@ Failover test: stop the leader's container (`docker stop pg-node1` on its VM) an
 
 ## Notes
 
-- `node3/docker-compose.yaml` differs from nodes 1–2 in a few places that look unintended: the service is named `pg-node3i` (container name is `pg-node3`), it runs as `user: "70:70"`, and etcd uses `--initial-cluster-state=existing` (nodes 1–2 use `new`). `existing` is right only when node 3 is added to an already running etcd cluster with `etcdctl member add`; for a fresh three-node bootstrap all members should use `new`.
+- All three etcd members use `--initial-cluster-state=new`, which is right for bootstrapping a fresh cluster. When adding a node to an already running etcd cluster, register it first with `etcdctl member add` and start it with `--initial-cluster-state=existing`. The flag is ignored once a member has its data directory.
 - Passwords (`SuperPassword123`, `ReplicaPassword123`, HAProxy `admin:pass`) are in the repository and `pg_hba` allows `0.0.0.0/0`; etcd and Patroni APIs are published without TLS or authentication – use only in an isolated network.
 - HAProxy itself is a single point of failure; production setups add a second HAProxy with a virtual IP (keepalived).

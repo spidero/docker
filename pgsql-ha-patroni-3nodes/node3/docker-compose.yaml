@@ -15,10 +15,9 @@ services:
       - --advertise-client-urls=http://10.183.116.92:2379
       - --initial-cluster-token=etcd-cluster-token
       - --initial-cluster=etcd1=http://10.183.116.182:2380,etcd2=http://10.183.116.225:2380,etcd3=http://10.183.116.92:2380
-      - --initial-cluster-state=existing
+      - --initial-cluster-state=new
 
-  pg-node3i:
-    user: "70:70"
+  pg-node3:
     build: .
     container_name: pg-node3
     restart: always

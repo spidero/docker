@@ -3,29 +3,35 @@ name: Validate Docker Compose Files
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   validate-docker-compose:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Find and validate docker-compose files
-      - name: Validate docker-compose.yml files
+      # Validate every compose file (.yml and .yaml) with Docker Compose v2
+      - name: Validate compose files
         run: |
-          echo "Searching for docker-compose.yml files..."
-          files=$(find . -name "docker-compose.yml")
-          if [ -z "$files" ]; then
-            echo "No docker-compose.yml files found."
-            exit 0
-          fi
-
-          for file in $files; do
-            echo "Validating $file"
-            docker-compose -f "$file" config
-          done
+          failed=0
+          found=0
+          while IFS= read -r -d '' file; do
+            found=$((found + 1))
+            echo "::group::$file"
+            if docker compose -f "$file" config -q; then
+              echo "OK"
+            else
+              echo "::error file=$file::invalid compose file"
+              failed=1
+            fi
+            echo "::endgroup::"
+          done < <(find . -path ./.git -prune -o -type f \
+                     \( -name 'docker-compose.yml' -o -name 'docker-compose.yaml' \
+                        -o -name 'compose.yml' -o -name 'compose.yaml' \) -print0 | sort -z)
+          echo "Validated $found compose file(s)"
+          exit $failed

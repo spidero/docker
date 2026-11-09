@@ -1,4 +1,18 @@
-version: '3'
+# RabbitMQ 3.8 cluster: rabbitmq1 is the seed node, rabbitmq2/3 join it as RAM nodes.
+
+x-join-cluster: &join-cluster
+  # Start the server in the background, wait until it is up, join the seed node,
+  # then keep the container running (RabbitMQ runs detached).
+  - bash
+  - -c
+  - |
+    rabbitmq-server -detached
+    rabbitmqctl await_startup --timeout 120
+    rabbitmqctl stop_app
+    rabbitmqctl reset
+    rabbitmqctl join_cluster --ram rabbit@rabbitmq1
+    rabbitmqctl start_app
+    exec tail -f /dev/null
 
 services:
   rabbitmq1:
@@ -13,6 +27,11 @@ services:
       RABBITMQ_DEFAULT_USER: "admin"
       RABBITMQ_DEFAULT_PASS: "password"
       RABBITMQ_NODENAME: "rabbit@rabbitmq1"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
     networks:
       - rabbitmq_network
 
@@ -21,43 +40,39 @@ services:
     container_name: rabbitmq2
     hostname: rabbitmq2
     depends_on:
-      - rabbitmq1
+      rabbitmq1:
+        condition: service_healthy
     ports:
       - "5673:5672"
       - "15673:15672"
     environment:
-      JOIN_CLUSTER_HOST: rabbitmq1
       RABBITMQ_ERLANG_COOKIE: "uniquecookie"
       RABBITMQ_DEFAULT_USER: "admin"
       RABBITMQ_DEFAULT_PASS: "password"
       RABBITMQ_NODENAME: "rabbit@rabbitmq2"
-      RABBITMQ_CLUSTERER_PARTITION_PREFIX: "rabbit"
     networks:
       - rabbitmq_network
-    command: bash -c 'sleep 30; ping -c 4 rabbitmq1;rabbitmqctl stop_app;rabbitmqctl reset;rabbitmqctl join_cluster --ram rabbit@rabbitmq1;rabbitmqctl start_app'
+    command: *join-cluster
 
   rabbitmq3:
     image: rabbitmq:3.8.23-management
     container_name: rabbitmq3
     hostname: rabbitmq3
     depends_on:
-      - rabbitmq1
+      rabbitmq1:
+        condition: service_healthy
     ports:
       - "5674:5672"
       - "15674:15672"
     environment:
-      JOIN_CLUSTER_HOST: rabbitmq1
       RABBITMQ_ERLANG_COOKIE: "uniquecookie"
       RABBITMQ_DEFAULT_USER: "admin"
       RABBITMQ_DEFAULT_PASS: "password"
       RABBITMQ_NODENAME: "rabbit@rabbitmq3"
-      RABBITMQ_CLUSTERER_PARTITION_PREFIX: "rabbit"
     networks:
       - rabbitmq_network
-    command: bash -c 'sleep 30;rabbitmqctl stop_app;rabbitmqctl reset;rabbitmqctl join_cluster --ram rabbit@rabbitmq1;rabbitmqctl start_app'
-
+    command: *join-cluster
 
 networks:
   rabbitmq_network:
     driver: bridge
-

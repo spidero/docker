@@ -18,10 +18,14 @@ docker exec rabbitmq1 rabbitmqctl cluster_status    # should list all three node
 docker compose down
 ```
 
+## How joining works
+
+- `rabbitmq1` has a healthcheck (`rabbitmq-diagnostics ping`); `rabbitmq2` and `rabbitmq3` start only when it is healthy (`depends_on: condition: service_healthy`).
+- Their command (shared YAML anchor `x-join-cluster`) starts `rabbitmq-server -detached`, waits with `rabbitmqctl await_startup`, then runs `stop_app` → `reset` → `join_cluster --ram rabbit@rabbitmq1` → `start_app` and keeps the container alive with `tail -f /dev/null`.
+- The cluster is complete about 1–2 minutes after `docker compose up -d`. A single `Error: unable to perform an operation on node` line at the start of the `rabbitmq2`/`rabbitmq3` logs comes from the CLI being called while the node is still booting and can be ignored.
+
 ## Notes
 
-- **The join commands probably do not work as written.** `command:` on `rabbitmq2` and `rabbitmq3` replaces the image's default command, so `rabbitmq-server` is never started there; `rabbitmqctl stop_app` / `join_cluster` then have no node to talk to and the containers exit. The `rabbit-4-cluster` example solves this by starting `rabbitmq-server -detached` first (see `join-cluster.sh` there).
-- `RABBITMQ_CLUSTERER_PARTITION_PREFIX` and `JOIN_CLUSTER_HOST` are not used by the official image.
+- Because RabbitMQ runs detached in `rabbitmq2`/`rabbitmq3`, the container's main process is `tail`; Docker will not notice if RabbitMQ itself stops.
 - `RABBITMQ_ERLANG_COOKIE` as an environment variable is deprecated in newer RabbitMQ versions (a cookie file is preferred).
 - RabbitMQ 3.8 is end-of-life – see [`../rabbit-4-cluster`](../rabbit-4-cluster) for the RabbitMQ 4 version with persistent volumes.
-- The top-level `version:` key is obsolete; `docker compose` prints a warning and ignores it.

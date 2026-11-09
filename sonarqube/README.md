@@ -33,6 +33,5 @@ docker run --rm --network host -v "$PWD:/usr/src" sonarsource/sonar-scanner-cli 
 
 ## Notes
 
-- **The compose file does not validate as it is.** Its first line `// sonar default login, pass: admin` is not a YAML comment; `docker compose config` fails with `additional properties '// sonar default login, pass' not allowed`. Change `//` to `#` before running.
-- The database variables use the old `SONARQUBE_JDBC_*` names. Current images expect `SONAR_JDBC_URL`, `SONAR_JDBC_USERNAME` and `SONAR_JDBC_PASSWORD`; with the old names SonarQube may ignore PostgreSQL and fall back to its embedded test database (check the startup log).
+- The database connection is configured with `SONAR_JDBC_URL`, `SONAR_JDBC_USERNAME` and `SONAR_JDBC_PASSWORD` (the older `SONARQUBE_JDBC_*` names are not used by current images).
 - The database credentials (`sonar` / `sonar`) are for local testing only.
